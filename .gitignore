@@ -1,0 +1,12 @@
+# Folders:
+Debug
+logdata
+Release
+
+# Files:
+*.cdtlog
+*.txt
+*.vcxproj
+*.filters
+*.user
+*.log
