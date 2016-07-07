@@ -1,1 +1,2 @@
-# THIS IS A README TES T
+# README
+  This contains functions to decode receiver raw data.
