@@ -1,2 +1,2 @@
 # README
-  This contains functions to decode receiver raw data.
+  This project contains functions to decode gnss receiver data.
