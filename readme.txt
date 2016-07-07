@@ -1,1 +1,2 @@
-# THIS IS A README TES T
+# README
+  This project contains functions to decode gps receiver data.
