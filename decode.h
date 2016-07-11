@@ -6,6 +6,7 @@
 * history : 2016/04/14  created
 *           2016/04/27  added gsof data type
 *           2016/06/13  add sigma values for gsof_att_t data type
+*           2016/07/11  add gsof_sat_t to gsof_t, and related functions
 *
 *-----------------------------------------------------------------------------*/
 
@@ -248,10 +249,23 @@ typedef struct {        /* gsof attitude data type */
     double  roll;       /* tuen left and turn right angle (+/-180 deg) */
 } gsof_att_t;
 
+typedef struct {        /* gsof single satellite information type */
+    unsigned char sys;  /* satellite system */
+    unsigned char prn;  /* satellite prn */
+    float ele;          /* satellite elevation angle (deg) */
+    float azi;          /* satellite azimuth angle (deg) */
+} gsof_satd_t;
+
+typedef struct {        /* gsof satellites information type */
+    unsigned char num;  /* satellite valid in vision */
+    gsof_satd_t data[MAXOBS];    /* satellite data records */
+} gsof_sat_t;
+
 typedef struct {        /* gsof data type */
     gsof_pos_t  pos;    /* position */
     gsof_vel_t  vel;    /* velocity */
     gsof_att_t  att;    /* attitude */
+    gsof_sat_t  sat;    /* satellite information data */
 } gsof_t;
 
 typedef struct {        /* receiver raw data control type */

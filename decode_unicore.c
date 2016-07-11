@@ -6,6 +6,8 @@
 * history : 2016/03/21  created
 *           2016/04/27  added gsof decoding code
 *           2016/06/12  added RANGEH to RANGE conversion function
+*           2016/07/11  add decode_satvis function
+*           2016/07/11  modify SNR[] decoding function
 *-----------------------------------------------------------------------------*/
 
 #include "decode.h"
@@ -28,6 +30,7 @@
 #define HEADING         971     /* MSG ID: gsof attitude message */
 #define PSRVEL          100     /* MSG ID: gsof velocity messgae */
 #define PSRPOS          47      /* MSG ID: gsof position message */
+#define SATVIS          48      /* MSG ID: gsof satellite information message */
 
 /* Data conversion macros: ---------------------------------------------------*/
 #define I1(p) (*((char*)(p)))          /* One byte signed integer */
@@ -60,6 +63,7 @@ static int decode_rangeh(raw_t *raw, int endian);
 static int decode_attitude(raw_t *raw, int endian);
 static int decode_position(raw_t *raw, int endian);
 static int decode_velocity(raw_t *raw, int endian);
+static int decode_satvis(raw_t *raw, int endian);
 static unsigned char get_snr(float snr);
 static int rangeh2range(raw_t *raw, FILE *fp);
 
@@ -1215,7 +1219,7 @@ static int decode_range(raw_t *raw, int e)
         raw->obs.data[k].P[nfreq] = psr;
         raw->obs.data[k].L[nfreq] = adr;
         raw->obs.data[k].D[nfreq] = dopp;
-        raw->obs.data[k].SNR[nfreq] = get_snr(cno);
+        raw->obs.data[k].SNR[nfreq] = floor(cno*4.0); /* refs to definition */
         raw->obs.data[k].code[nfreq]= code;
     }
 

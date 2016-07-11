@@ -87,6 +87,13 @@ int main()
         {
         case 1:         /* input observation data */
             ++obs_counter;
+            for (i=0; i<raw->obs.n; i++) {
+                printf("%c%02d: %5.2f  %5.2f \n",
+                    (raw->obs.data[i].sys==SYS_GPS)?'G':'B',
+                    raw->obs.data[i].sat,
+                    raw->obs.data[i].SNR[0]/4.0,
+                    raw->obs.data[i].SNR[1]/4.0);
+            }
 #if 0
             /*write_obs(raw, ascii_out);*/
             if (raw->antno == 0) {
