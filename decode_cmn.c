@@ -140,7 +140,7 @@ extern void free_raw(raw_t *raw)
 }
 
 /* satellite number to satellite system ----------------------------------------
-* convert satellite number to satellite system
+* convert satellite number to satellite system + prn
 * args   : int    sat       I   satellite number (1-MAXSAT)
 *          int    *prn      IO  satellite prn/slot number (NULL: no output)
 * return : satellite system (SYS_GPS,SYS_GLO,...)

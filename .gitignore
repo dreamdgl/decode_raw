@@ -1,12 +1,15 @@
-# Folders:
+# Visual Studio Folders:
 Debug
 logdata
 Release
 
-# Files:
+# Visual Studio Files:
 *.cdtlog
 *.txt
 *.vcxproj
 *.filters
 *.user
 *.log
+
+# Qt Files:
+*.pro
