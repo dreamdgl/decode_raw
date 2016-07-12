@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     /* main loop */
     while(1) {
         memset(buff, 0x00, sizeof(buff));
-        recvnum = recv(sock, (char *)buff, 4000, 0);
+        recvnum = recv(sock, buff, 4000, 0);
 #ifdef WIN32_
         Sleep(1000);
 #endif
