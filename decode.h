@@ -252,8 +252,8 @@ typedef struct {        /* gsof attitude data type */
 typedef struct {        /* gsof single satellite information type */
     unsigned char sys;  /* satellite system */
     unsigned char prn;  /* satellite prn */
-    float ele;          /* satellite elevation angle (deg) */
-    float azi;          /* satellite azimuth angle (deg) */
+    double ele;          /* satellite elevation angle (deg) */
+    double azi;          /* satellite azimuth angle (deg) */
 } gsof_satd_t;
 
 typedef struct {        /* gsof satellites information type */

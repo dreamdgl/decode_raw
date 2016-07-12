@@ -103,6 +103,7 @@ static int rangeh2range(raw_t *raw, FILE *fp);
 |   21: input gsof position data
 |   22: input gsof velocity data
 |   23: input gsof attitude data
+|   48: input gsof satellite data
 |
 | Design Issues:
 |
@@ -243,6 +244,15 @@ extern int decode_unicore(raw_t *raw, unsigned char data)
                                         LITTLE_ENDIAN : BIG_ENDIAN);
         clear_message_buffer(raw);
         return (status);
+    }
+
+    /* If this is a satellite vision packet */
+    if(msg_id == SATVIS)
+    {
+        status = decode_satvis(raw, strstr(raw->opt, "-LE") ?
+                                        LITTLE_ENDIAN : BIG_ENDIAN);
+        clear_message_buffer(raw);
+        return(status);
     }
 
     /* Other packets, ignored */
@@ -1520,3 +1530,63 @@ static int rangeh2range(raw_t *raw, FILE *fp)
     return (1);
 }
 #endif
+
+/*
+| Function: decode_satvis
+| Purpose:  Decode gsof satellite invision message
+| Authors:  Guangli Dong
+|
+| Formal Parameters: 
+|
+|   raw = Receiver raw data control structure [Input]
+|   endian = Endianness indicator             [Input]
+|
+| Implicit Inputs:
+|
+|   raw->buff[]
+|
+| Implicit outputs:
+|
+|   raw->gsof.sat
+|
+| Return Value:
+|
+|   -1: error message
+|    0: no message (tells caller to please read more data from the stream)
+|   48: input gsof velocity data
+|
+| Design Issues:
+|
+|   See BeiDou ICD V2.0 for documentation of the BDS satellite ephemeris.
+|   See UnicoreComm command information reference manual V7.7.
+*/
+static int decode_satvis(raw_t *raw, int e)
+{
+    unsigned char header_len = (raw->buff[3]);  /* length of record header */
+    unsigned char *p = raw->buff + header_len;  /* set p point to the message data */
+    int sum, prn, sys, satnum, i;
+    double azi, ele;
+
+    /* get total satellites in vision */
+    sum = U4(p+8, e);
+    raw->gsof.sat.num = sum;
+
+    /* get data records */
+    for (i =0; i<sum; i++) {
+        /* get sys & prn */
+        satnum = I2(p+40*i+12, e);
+        sys = satsys(satnum, &prn);
+        /* get elevation angle */
+        ele = R8(p+40*i+20, e);
+        /* get azimuth angle */
+        azi = R8(p+40*i+28, e);
+        /* update gsof sat data */
+        raw->gsof.sat.data[i].sys = sys;
+        raw->gsof.sat.data[i].prn = prn;
+        raw->gsof.sat.data[i].azi = azi;
+        raw->gsof.sat.data[i].ele = ele;
+    }
+
+    /* return SATVIS flag */
+    return (48);
+}
