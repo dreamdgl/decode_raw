@@ -41,8 +41,8 @@
  |
  *----------------------------------------------------------------------------*/
 
-#ifndef WINDOWS_SOCKET_H
-#define WINDOWS_SOCKET_H
+#ifndef SOCKET_LIB_H
+#define SOCKET_LIB_H
 
 /* includes ------------------------------------------------------------------*/
 #include <stdio.h>
@@ -79,4 +79,4 @@ extern void     close_client_socket(socket_t sock);
 }
 #endif
 
-#endif // WINDOWS_SOCKET_H
+#endif // SOCKET_LIB_H
