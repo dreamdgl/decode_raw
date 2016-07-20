@@ -72,6 +72,7 @@ extern "C" {
 /* extern functions ----------------------------------------------------------*/
 extern socket_t creat_server_socket(const char *IP, int PORT);
 extern socket_t creat_client_socket(const char *IP, int PORT);
+
 extern void     close_server_socket(socket_t sock);
 extern void     close_client_socket(socket_t sock);
 

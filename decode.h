@@ -119,7 +119,7 @@ extern "C" {
 #define CODE_L2D    15                  /* obs code: L2 L1C/A-(P2-P1) (GPS) */
 #define CODE_L2S    16                  /* obs code: L2C(M)     (GPS,QZS) */
 #define CODE_L2L    17                  /* obs code: L2C(L)     (GPS,QZS) */
-#define CODE_L2X    18                  /* obs code: L2C(M+L),B1I+Q (GPS,QZS,CMP) */
+#define CODE_L2X    18                  /* obs code: L2C(M+L),B1I+Q (GPS,QZS,BDS) */
 #define CODE_L2P    19                  /* obs code: L2P,G2P    (GPS,GLO) */
 #define CODE_L2W    20                  /* obs code: L2 Z-track (GPS) */
 #define CODE_L2Y    21                  /* obs code: L2Y        (GPS) */
@@ -128,23 +128,23 @@ extern "C" {
 #define CODE_L5I    24                  /* obs code: L5/E5aI    (GPS,GAL,QZS,SBS) */
 #define CODE_L5Q    25                  /* obs code: L5/E5aQ    (GPS,GAL,QZS,SBS) */
 #define CODE_L5X    26                  /* obs code: L5/E5aI+Q  (GPS,GAL,QZS,SBS) */
-#define CODE_L7I    27                  /* obs code: E5bI,B2I   (GAL,CMP) */
-#define CODE_L7Q    28                  /* obs code: E5bQ,B2Q   (GAL,CMP) */
-#define CODE_L7X    29                  /* obs code: E5bI+Q,B2I+Q (GAL,CMP) */
+#define CODE_L7I    27                  /* obs code: E5bI,B2I   (GAL,BDS) */
+#define CODE_L7Q    28                  /* obs code: E5bQ,B2Q   (GAL,BDS) */
+#define CODE_L7X    29                  /* obs code: E5bI+Q,B2I+Q (GAL,BDS) */
 #define CODE_L6A    30                  /* obs code: E6A        (GAL) */
 #define CODE_L6B    31                  /* obs code: E6B        (GAL) */
 #define CODE_L6C    32                  /* obs code: E6C        (GAL) */
-#define CODE_L6X    33                  /* obs code: E6B+C,LEXS+L,B3I+Q (GAL,QZS,CMP) */
+#define CODE_L6X    33                  /* obs code: E6B+C,LEXS+L,B3I+Q (GAL,QZS,BDS) */
 #define CODE_L6Z    34                  /* obs code: E6A+B+C    (GAL) */
 #define CODE_L6S    35                  /* obs code: LEXS       (QZS) */
 #define CODE_L6L    36                  /* obs code: LEXL       (QZS) */
 #define CODE_L8I    37                  /* obs code: E5(a+b)I   (GAL) */
 #define CODE_L8Q    38                  /* obs code: E5(a+b)Q   (GAL) */
 #define CODE_L8X    39                  /* obs code: E5(a+b)I+Q (GAL) */
-#define CODE_L2I    40                  /* obs code: B1I        (CMP) */
-#define CODE_L2Q    41                  /* obs code: B1Q        (CMP) */
-#define CODE_L6I    42                  /* obs code: B3I        (CMP) */
-#define CODE_L6Q    43                  /* obs code: B3Q        (CMP) */
+#define CODE_L2I    40                  /* obs code: B1I        (BDS) */
+#define CODE_L2Q    41                  /* obs code: B1Q        (BDS) */
+#define CODE_L6I    42                  /* obs code: B3I        (BDS) */
+#define CODE_L6Q    43                  /* obs code: B3Q        (BDS) */
 #define CODE_L3I    44                  /* obs code: G3I        (GLO) */
 #define CODE_L3Q    45                  /* obs code: G3Q        (GLO) */
 #define CODE_L3X    46                  /* obs code: G3I+Q      (GLO) */
@@ -195,8 +195,8 @@ typedef struct {        /* GPS/QZS/GAL broadcast ephemeris type */
     double ura;         /* SV accuracy (m^2) */
     int svh;            /* SV health (0:ok) */
     int week;           /* GPS/QZS: gps week, GAL: galileo week */
-    int code;           /* GPS/QZS: code on L2, GAL/CMP: data sources */
-    int flag;           /* GPS/QZS: L2 P data flag, CMP: nav type */
+    int code;           /* GPS/QZS: code on L2, GAL/BDS: data sources */
+    int flag;           /* GPS/QZS: L2 P data flag, BDS: nav type */
     gtime_t toe,toc,ttr; /* Toe,Toc,T_trans */
     /* SV orbit parameters */
     double A,e,i0,OMG0,omg,M0,deln,n,OMGd,idot;

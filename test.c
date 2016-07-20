@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     raw->outtype    = 1;        /* set to output message type id */
 
     /* initialize socket */
-    sock = creat_client_socket("192.168.3.212", 40001);
+    sock = creat_client_socket("192.168.3.212", 40002);
     if(sock < 0) {
         printf("sock error\n");
         exit(0);
