@@ -12,8 +12,9 @@
 
 #include "decode.h"
 
-/* constants -----------------------------------------------------------------*/
+/* macros and constants ------------------------------------------------------*/
 #define PI          3.1415926535897932  /* pi */
+#define SQRT(x)     (x<=0) ? 0.0 : sqrt(x)
 
 #define SYNC1           0xAA    /* synchronization charater 1 of packet head */
 #define SYNC2           0x44    /* synchronization charater 2 of packet head */
@@ -31,6 +32,11 @@
 #define PSRVEL          100     /* MSG ID: gsof velocity messgae */
 #define PSRPOS          47      /* MSG ID: gsof position message */
 #define SATVIS          48      /* MSG ID: gsof satellite information message */
+
+static const double ura_eph[]={ /* ura values (ref [3] 20.3.3.3.1.1) */
+    2.4,3.4,4.85,6.85,9.65,13.65,24.0,48.0,96.0,192.0,384.0,768.0,1536.0,
+    3072.0,6144.0,0.0
+};
 
 /* Data conversion macros: ---------------------------------------------------*/
 #define I1(p) (*((char*)(p)))          /* One byte signed integer */
@@ -64,8 +70,9 @@ static int decode_attitude(raw_t *raw, int endian);
 static int decode_position(raw_t *raw, int endian);
 static int decode_velocity(raw_t *raw, int endian);
 static int decode_satvis(raw_t *raw, int endian);
-static unsigned char get_snr(float snr);
 static int rangeh2range(raw_t *raw, FILE *fp);
+static int uraindex(double value);
+
 
 /* RANGEH to RANGE conversion variants ---------------------------------------*/
 
@@ -717,27 +724,28 @@ static int decode_bd2ephem(raw_t *raw, int e)
 {
     unsigned char header_len = (raw->buff[3]);  /* length of record header */
     unsigned char *p = raw->buff + header_len;  /* set p point to the message data */
-    int prn, sat, toc, tow;
+    int satnum, prn, sat, toc, tow, sys;
     unsigned int flags, toe;
-    double sqrtA;
+    double sqrtA, ura;
     eph_t eph={0};
     struct tm *tm_tm;
 
     /* Get prn */
-    sat = U4(p, e);                     /* 000-003: System PRN */
-    if (satsys(sat, &prn) != SYS_BDS)
+    satnum = U4(p, e);                     /* 000-003: System PRN */
+    if (satnum < 161 || satnum > 197)
     {
         trace(0, "unicore: BDS ephemeris satellite number error, PRN=%d.\n", prn);
         return (-1);
     }
+    prn = satnum - 160;
 
-    eph.tow = R8(p+4, e);               /* 004-011: Time (s) of 1st subfram in week, based on GPS time */
+    tow     = (int)R8(p+4, e);          /* 004-011: Time (s) of 1st subfram in week, based on GPS time */
     eph.svh = U4(p+12, e);              /* 012-015: SV health */
     eph.aode= U4(p+16, e);              /* 016-019: AODE Age Of Data, Ephemeris*/
                                         /* 020-023: Another AODE, ignored */
     eph.week= U4(p+24, e);              /* 024-027: GPS Week */
                                         /* 028-031: Z week based on GPS for week-roll, ignored */
-    eph.toes= R8(p+32, e);              /* 032-039: Ephemeris reference time */
+    toe     = (unsigned int)R8(p+32, e);/* 032-039: Ephemeris reference time */
     eph.A   = R8(p+40, e);              /* 040-047: Semi-major axis (m) */
     eph.deln= R8(p+48, e);              /* 048-055: Correction of mean angle velocity (rad/s) */
     eph.M0  = R8(p+56, e);              /* 056-063: Mean anomaly at reference time (rad) */
@@ -754,7 +762,7 @@ static int decode_bd2ephem(raw_t *raw, int e)
     eph.OMG0= R8(p+144, e);             /* 134-151: Longitude of ascending node (rad) */
     eph.OMGd= R8(p+152, e);             /* 152-159: Rate of Longitude of ascending node (rad/s) */
     eph.aodc= U4(p+160, e);             /* 160-163: Age of data, clock */
-    eph.tocs= R8(p+164, e);             /* 164-171: Reference time of clock parameters (s) */
+    toc     = (int)R8(p+164, e);        /* 164-171: Reference time of clock parameters (s) */
     eph.tgd[0]  = R8(p+172, e);         /* 172-179: Equipment group delay differential of B1 (s) */
     eph.tgd[1]  = R8(p+180, e);         /* 180-187: Equipment group delay differential of B2 (s) */
     eph.f0  = R8(p+188, e);             /* 188-195: Satellite clock bias (s) */
@@ -762,18 +770,19 @@ static int decode_bd2ephem(raw_t *raw, int e)
     eph.f2  = R8(p+204, e);             /* 204-211: Satellite clock acceleration (s/s^2) */
                                         /* 212-215: Anti-sproof, ignored */
     eph.n   = R8(p+216, e);             /* 216-223: Corrected mean angle rate (rad/s) */
-    eph.ura = R8(p+224, e);             /* 224-231: SV accuracy (m^2) */
+    ura     = R8(p+224, e);             /* 224-231: SV accuracy (m^2) */
+    eph.sva = uraindex(SQRT(ura));
 
     /* Convert  week and tow in gps time to gtime_t struct */
-    eph.toc   = gpst2time(eph.week, eph.tocs);
-    eph.toe   = gpst2time(eph.week, eph.toes);
-    eph.ttr   = gpst2time(eph.week, eph.tow);
+    eph.toc   = gpst2time(eph.week, toc);
+    eph.toe   = gpst2time(eph.week, toe);
+    eph.ttr   = gpst2time(eph.week, tow);
 
     /* Update BDS nav data */
-    eph.prn = prn;
-    raw->nav.beph[prn-1] = eph;
-    raw->ephsys = SYS_BDS;
-    raw->ephprn = prn;
+    sat = satno(SYS_BDS, prn);
+    eph.sat = sat;
+    raw->nav.eph[sat-1] = eph;
+    raw->ephsat = sat;
 
     return (2);
 }
@@ -817,27 +826,28 @@ static int decode_gpsephem(raw_t *raw, int e)
 {
     unsigned char header_len = (raw->buff[3]);  /* length of record header */
     unsigned char *p = raw->buff + header_len;  /* set p point to the message data */
-    int prn, sat, toc, tow;
+    int satnum, prn, sat, toc, tow, sys;
     unsigned int flags, toe;
-    double sqrtA;
+    double sqrtA, ura;
     eph_t eph={0};
     struct tm *tm_tm;
 
     /* Get prn */
-    sat = U4(p, e);                     /* 000-003: System PRN */
-    if ( satsys(sat, &prn) != SYS_GPS )
+    satnum = U4(p, e);                     /* 000-003: System PRN */
+    if ( satnum <= 0 || satnum > 32 )
     {
         trace(0, "unicore: GPS ephemeris satellite number error, PRN=%d.\n", prn);
         return (-1);
     }
+    prn = satnum;
 
-    eph.tow = R8(p+4, e);               /* 004-011: Time (s) of 1st subfram in week, based on GPS time */
+    tow     = (int)R8(p+4, e);          /* 004-011: Time (s) of 1st subfram in week, based on GPS time */
     eph.svh = U4(p+12, e);              /* 012-015: SV health */
                                         /* 016-019: ephemeris #1 age */
     eph.iode= U4(p+20, e);              /* 020-023: ephemeris #2 age = GPS IODE1 */
     eph.week= U4(p+24, e);              /* 024-027: GPS Week */
                                         /* 028-031: Z week based on GPS for week-roll, ignored */
-    eph.toes= R8(p+32, e);              /* 032-039: Ephemeris reference time */
+    toe     = (unsigned int)R8(p+32, e);/* 032-039: Ephemeris reference time */
     eph.A   = R8(p+40, e);              /* 040-047: Semi-major axis (m) */
     eph.deln= R8(p+48, e);              /* 048-055: Correction of mean angle velocity (rad/s) */
     eph.M0  = R8(p+56, e);              /* 056-063: Mean anomaly at reference time (rad) */
@@ -854,25 +864,26 @@ static int decode_gpsephem(raw_t *raw, int e)
     eph.OMG0= R8(p+144, e);             /* 134-151: Longitude of ascending node (rad) */
     eph.OMGd= R8(p+152, e);             /* 152-159: Rate of Longitude of ascending node (rad/s) */
     eph.aodc= U4(p+160, e);             /* 160-163: Age of data, clock */
-    eph.tocs= R8(p+164, e);             /* 164-171: Reference time of clock parameters (s) */
-    eph.tgd[0]  = R8(p+172, e);         /* 172-179: Equipment group delay differential of B1 (s) */
+    toc     = (int)R8(p+164, e);        /* 164-171: Reference time of clock parameters (s) */
+    eph.tgd[0]  = R8(p+172, e);         /* 172-179: Equipment group delay differential (s) */
     eph.f0  = R8(p+180, e);             /* 180-187: Satellite clock bias (s) */
     eph.f1  = R8(p+188, e);             /* 188-195: Satellite clock rate (s/s) */
     eph.f2  = R8(p+196, e);             /* 196-203: Satellite clock acceleration (s/s^2) */
                                         /* 204-207: Anti-sproof, ignored */
     eph.n   = R8(p+208, e);             /* 208-215: Corrected mean angle rate (rad/s) */
-    eph.ura = R8(p+216, e);             /* 216-223: SV accuracy (m^2) */
+    ura     = R8(p+216, e);                 /* 216-223: SV accuracy (m^2) */
+    eph.sva = uraindex(SQRT(ura));
 
     /* Convert  week and tow in gps time to gtime_t struct */
-    eph.toc   = gpst2time(eph.week, eph.tocs);
-    eph.toe   = gpst2time(eph.week, eph.toes);
-    eph.ttr   = gpst2time(eph.week, eph.tow);
+    eph.toc   = gpst2time(eph.week, toc);
+    eph.toe   = gpst2time(eph.week, toe);
+    eph.ttr   = gpst2time(eph.week, tow);
 
     /* Update GPS nav data */
-    eph.prn = prn;
-    raw->nav.beph[prn-1] = eph;
-    raw->ephsys = SYS_GPS;
-    raw->ephprn = prn;
+    sat = satno(SYS_GPS, prn);
+    eph.sat = sat;
+    raw->nav.eph[sat-1] = eph;
+    raw->ephsat = sat;
 
     return (2);
 }
@@ -1107,7 +1118,7 @@ static int decode_range(raw_t *raw, int e)
     unsigned char *p = raw->buff + header_len;  /* set p point to the message data */
     int i, j, k;
     int nobs;                                   /* observation number*/
-    int prn;                                    /* satellite prn */
+    int sat, prn;                               /* satellite number, prn */
     unsigned char sys;                          /* satellite system */
     double psr, adr;                            /* pseudo range (m)/ carrier phase obs (cycle) */
     float dopp, cno;                            /* instant doppler (Hz)/ carrier noise ratio (dB-Hz)*/
@@ -1129,7 +1140,8 @@ static int decode_range(raw_t *raw, int e)
         pp = p + 4 + i*44;  /* H + nobs + #obs*44 */        
         /* Get prn */
         prn = U2(pp, e);
-        if (161<=prn && prn<=197 ) prn = prn -160;  /* BDS */
+        if (38<=prn && prn<=62) prn = prn - 37;     /* GLONASS */
+        else if (161<=prn && prn<=197 ) prn = prn -160;  /* BDS */
         /* ignore glofreq for glonass */
 
         /* Get pseduo range */
@@ -1215,16 +1227,15 @@ static int decode_range(raw_t *raw, int e)
 
         /* Update obs in raw */
         prnFlag = 0;
+        sat = satno(sys, prn);
         for(k=0; k<raw->obs.n; k++) /* To find if the satellite already has a record */
-            if (raw->obs.data[k].sys == sys &&
-                raw->obs.data[k].sat == prn) {
+            if ( raw->obs.data[k].sat == sat ) {
                     prnFlag = 1;    /* found one */
                     break;
             }
         if( !prnFlag )  /* not found, then add a new record */
             k = raw->obs.n++;
-        raw->obs.data[k].sys = sys;
-        raw->obs.data[k].sat = prn;
+        raw->obs.data[k].sat = sat;
         raw->obs.data[k].time= raw->time;
         raw->obs.data[k].P[nfreq] = psr;
         raw->obs.data[k].L[nfreq] = adr;
@@ -1448,42 +1459,6 @@ static int decode_velocity(raw_t *raw, int e)
     return (22);
 }
 
-/*
-| Function: get_snr
-| Purpose : convert snr(float) to snr index
-| Author  : Guangli Dong
-| 
-| Formal parameter:
-|   snr = carrier noise ratio
-|
-| Return value:
-|   snr index
-|
-| Reference:
-|   GPS ICD
-|
-*/
-static unsigned char get_snr(float snr)
-{
-    if(snr < 12.0)
-        return 1;
-    else if(snr < 17.0)
-        return 2;
-    else if(snr < 23.0)
-        return 3;
-    else if(snr < 29.0)
-        return 4;
-    else if(snr < 35.0)
-        return 5;
-    else if(snr < 41.0)
-        return 6;
-    else if(snr < 47.0)
-        return 7;
-    else if(snr < 53.0)
-        return 8;
-    else
-        return 9;
-}
 
 /*
 | Function: rangeh2range
@@ -1575,7 +1550,19 @@ static int decode_satvis(raw_t *raw, int e)
     for (i =0; i<sum; i++) {
         /* get sys & prn */
         satnum = I2(p+40*i+12, e);
-        sys = satsys(satnum, &prn);
+        if( 0<= satnum && satnum <= 32) {         /* GPS */
+            prn = satnum;  
+            sys = SYS_GPS;
+        }
+        else if ( 38<= satnum && satnum  <= 61) {  /* GLONASS */
+            prn = satnum - 37; 
+            sys = SYS_GLO;
+        }
+        else if ( 161<= satnum && satnum  <= 197) {/* BDS */
+            prn = satnum - 160; 
+            sys = SYS_BDS;
+        }
+
         /* get elevation angle */
         ele = R8(p+40*i+20, e);
         /* get azimuth angle */
@@ -1589,4 +1576,12 @@ static int decode_satvis(raw_t *raw, int e)
 
     /* return SATVIS flag */
     return (48);
+}
+
+/* ura value (m) to ura index ------------------------------------------------*/
+static int uraindex(double value)
+{
+    int i;
+    for (i=0;i<15;i++) if (ura_eph[i]>=value) break;
+    return i;
 }

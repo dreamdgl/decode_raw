@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     raw->outtype    = 1;        /* set to output message type id */
 
     /* initialize socket */
-    sock = creat_client_socket("192.168.3.212", 40002);
+    sock = creat_client_socket("192.168.3.212", 40003);
     if(sock < 0) {
         printf("sock error\n");
         exit(0);
@@ -62,6 +62,7 @@ static void decode_stream(raw_t *raw, unsigned char buff[], int len)
 {
     /* local variable */
     int i, j, status;
+    int sys, prn;
     for (i=0; i<len; i++) {
         status = decode_unicore(raw, buff[i]);
         /* get gsof_sat data */
@@ -82,9 +83,10 @@ static void decode_stream(raw_t *raw, unsigned char buff[], int len)
             printf("%20s ==== sna ====> %02d\n", time_str(raw->time, 3),
                 raw->obs.n);
             for(j=0; j<raw->obs.n; j++) {
+                sys = satsys(raw->obs.data[j].sat, &prn);
                 printf("    %c%02d  %8.3f %8.3f\n", 
-                    (raw->obs.data[j].sys == SYS_GPS)? 'G': 'C',
-                    raw->obs.data[j].sat,
+                    (sys == SYS_GPS)? 'G': 'C',
+                    prn,
                     raw->obs.data[j].SNR[0]/4.0,
                     raw->obs.data[j].SNR[1]/4.0);
             }
