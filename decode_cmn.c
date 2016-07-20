@@ -43,10 +43,12 @@ extern int init_raw(raw_t *raw)
     gtime_t time0={0};
     obsd_t data0={{0}};
     eph_t  eph0 ={0,-1,-1};
+    geph_t geph0 = {0,-1};
     alm_t  alm0 ={0,-1};
     gsof_pos_t pos0 = {0};
     gsof_vel_t vel0 = {0};
     gsof_att_t att0 = {0};
+    gsof_sat_t sat0 = {0};
 
 
     /* Loop values */
@@ -55,13 +57,12 @@ extern int init_raw(raw_t *raw)
     trace(3,"init_raw:\n");
 
     /* Init time */
-    raw->time   = time0;
+    raw->time   = raw->tobs = time0;
     raw->week=0;
     raw->seconds=0;
 
     /* Init ephemeris update flag */
-    raw->ephprn = 0;
-    raw->ephsys = 0;
+    raw->ephsat = 0;
 
     /* Init antenna indicator for multi-antennas receiver */
     raw->antno  = 0;
@@ -84,42 +85,44 @@ extern int init_raw(raw_t *raw)
 
     /* Clear data pointers */
     raw->obs.data =NULL;
-    raw->nav.geph =NULL;
-    raw->nav.beph =NULL;
-    raw->nav.galm =NULL;
-    raw->nav.balm =NULL;
-    raw->nav.geph =NULL;
+    raw->obuf.data = NULL;
+    raw->nav.eph =NULL;
+    raw->nav.geph = NULL;
+    raw->nav.alm =NULL;
 
     /* allocate data to obs and nav pointers */
-    if (!(raw->obs.data =(obsd_t *)malloc(sizeof(obsd_t)*MAXOBS))||
-        !(raw->nav.geph =(eph_t *)malloc(sizeof(eph_t )*NSATGPS))||
-        !(raw->nav.beph =(eph_t *)malloc(sizeof(eph_t )*NSATBDS))||
-        !(raw->nav.galm =(alm_t *)malloc(sizeof(alm_t )*NSATGPS))||
-        !(raw->nav.balm =(alm_t *)malloc(sizeof(alm_t )*NSATBDS))) {
+    if (!(raw->obs.data = (obsd_t   *)malloc(sizeof(obsd_t)*MAXOBS))||
+        !(raw->obuf.data= (obsd_t   *)malloc(sizeof(obsd_t)*MAXOBS))||
+        !(raw->nav.eph  = (eph_t    *)malloc(sizeof(eph_t )*MAXSAT))||
+        !(raw->nav.geph = (geph_t   *)malloc(sizeof(geph_t)*NSATGLO))||
+        !(raw->nav.alm  = (alm_t    *)malloc(sizeof(alm_t )*MAXSAT))) {
             free_raw(raw);
             return 0;
     }
 
     /* Reset data numbers */
-    raw->obs.n =0;
-    raw->nav.ng=raw->nav.nga = NSATGPS;
-    raw->nav.nb=raw->nav.nba = NSATBDS;
+    raw->obs.n  = 0;
+    raw->obuf.n = 0;
+    raw->nav.n=raw->nav.na = MAXSAT;
+    raw->nav.ng = NSATGLO;
+//    raw->nav.nb=raw->nav.nba = MAXSAT;
 
     /* Init data */
-    for (i=0; i<MAXOBS; i++) raw->obs.data[i]=data0;
-    for (i=0; i<NSATGPS;i++) {
-        raw->nav.geph[i] = eph0;
-        raw->nav.galm[i] = alm0;
+    for (i=0; i<MAXOBS; i++) raw->obs.data [i] = data0;
+    for (i=0; i<MAXOBS; i++) raw->obuf.data[i] = data0;
+    for (i=0; i<MAXSAT;i++) {
+        raw->nav.eph[i] = eph0;
+        raw->nav.alm[i] = alm0;
     }
-    for (i=0; i<NSATBDS; i++) {
-        raw->nav.beph[i] = eph0;
-        raw->nav.balm[i] = alm0;
+    for (i=0; i<NSATGLO; i++) {
+        raw->nav.geph[i] = geph0;
     }
 
     /* Init gsof data */
     raw->gsof.pos = pos0;
     raw->gsof.vel = vel0;
     raw->gsof.att = att0;
+    raw->gsof.sat = sat0;
 
     return 1;
 }
@@ -132,14 +135,14 @@ extern void free_raw(raw_t *raw)
 {
     trace(3,"free_raw:\n");
 
-    free(raw->obs.data ); raw->obs.data =NULL; raw->obs.n =0;
-    free(raw->nav.geph ); raw->nav.geph =NULL; raw->nav.ng =0;
-    free(raw->nav.beph ); raw->nav.beph =NULL; raw->nav.nb =0;
-    free(raw->nav.galm ); raw->nav.galm =NULL; raw->nav.nga =0;
-    free(raw->nav.balm ); raw->nav.balm =NULL; raw->nav.nba =0;
+    free(raw->obs.data  );  raw->obs.data   = NULL; raw->obs.n  = 0;
+    free(raw->obuf.data );  raw->obuf.data  = NULL; raw->obuf.n = 0;
+    free(raw->nav.eph   );  raw->nav.eph    = NULL; raw->nav.n  = 0;
+    free(raw->nav.geph  );  raw->nav.geph   = NULL; raw->nav.ng = 0;
+    free(raw->nav.alm   );  raw->nav.alm    = NULL; raw->nav.na = 0;
 }
 
-/* satellite number to satellite system ----------------------------------------
+/* satellite number to satellite system + prn----------------------------------
 * convert satellite number to satellite system + prn
 * args   : int    sat       I   satellite number (1-MAXSAT)
 *          int    *prn      IO  satellite prn/slot number (NULL: no output)
@@ -148,19 +151,31 @@ extern void free_raw(raw_t *raw)
 extern int satsys(int sat, int *prn)
 {
     int sys=SYS_NONE;
-    
-    if (MINPRNGPS<= sat && sat <= MAXPRNGPS) {
-        sys = SYS_GPS; *prn = sat - MINPRNGPS + 1;
-    }
-    else if (MINPRNGLO <= sat && sat <= MAXPRNGLO) {
-        sys = SYS_GLO; *prn = sat - MINPRNGLO + 1;
-    }
-    else if (MINPRNBDS <= sat && sat <= MAXPRNBDS) {
-        sys = SYS_BDS; *prn = sat - MINPRNBDS + 1;
-    }
-    else
-        *prn = 0;
 
+    if (sat<=0||MAXSAT<sat) sat=0;
+    else if (sat<=NSATGPS) {
+        sys=SYS_GPS; sat+=MINPRNGPS-1;
+    }
+    else if ((sat-=NSATGPS)<=NSATGLO) {
+        sys=SYS_GLO; sat+=MINPRNGLO-1;
+    }
+    else if ((sat-=NSATGLO)<=NSATGAL) {
+        sys=SYS_GAL; sat+=MINPRNGAL-1;
+    }
+    else if ((sat-=NSATGAL)<=NSATQZS) {
+        sys=SYS_QZS; sat+=MINPRNQZS-1; 
+    }
+    else if ((sat-=NSATQZS)<=NSATBDS) {
+        sys=SYS_BDS; sat+=MINPRNBDS-1; 
+    }
+    else if ((sat-=NSATBDS)<=NSATLEO) {
+        sys=SYS_LEO; sat+=MINPRNLEO-1; 
+    }
+    else if ((sat-=NSATLEO)<=NSATSBS) {
+        sys=SYS_SBS; sat+=MINPRNSBS-1; 
+    }
+    else sat=0;
+    if (prn) *prn=sat;
     return sys;
 }
 
@@ -173,17 +188,28 @@ extern int satsys(int sat, int *prn)
 extern int satno(int sys, int prn)
 {
     if (prn<=0) return 0;
-
     switch (sys) {
     case SYS_GPS:
         if (prn<MINPRNGPS||MAXPRNGPS<prn) return 0;
-        return prn+MINPRNGPS-1;
+        return prn-MINPRNGPS+1;
     case SYS_GLO:
         if (prn<MINPRNGLO||MAXPRNGLO<prn) return 0;
-        return prn+MINPRNGLO-1;
+        return NSATGPS+prn-MINPRNGLO+1;
+    case SYS_GAL:
+        if (prn<MINPRNGAL||MAXPRNGAL<prn) return 0;
+        return NSATGPS+NSATGLO+prn-MINPRNGAL+1;
+    case SYS_QZS:
+        if (prn<MINPRNQZS||MAXPRNQZS<prn) return 0;
+        return NSATGPS+NSATGLO+NSATGAL+prn-MINPRNQZS+1;
     case SYS_BDS:
         if (prn<MINPRNBDS||MAXPRNBDS<prn) return 0;
-        return prn+MINPRNBDS-1;
+        return NSATGPS+NSATGLO+NSATGAL+NSATQZS+prn-MINPRNBDS+1;
+    case SYS_LEO:
+        if (prn<MINPRNLEO||MAXPRNLEO<prn) return 0;
+        return NSATGPS+NSATGLO+NSATGAL+NSATQZS+NSATBDS+prn-MINPRNLEO+1;
+    case SYS_SBS:
+        if (prn<MINPRNSBS||MAXPRNSBS<prn) return 0;
+        return NSATGPS+NSATGLO+NSATGAL+NSATQZS+NSATBDS+NSATLEO+prn-MINPRNSBS+1;
     }
     return 0;
 }
