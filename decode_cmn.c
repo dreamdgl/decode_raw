@@ -48,7 +48,7 @@ extern int init_raw(raw_t *raw)
     gsof_pos_t pos0 = {0};
     gsof_vel_t vel0 = {0};
     gsof_att_t att0 = {0};
-    gsof_sat_t sat0 = {0};
+    gsof_satd_t satd0 = {0};
 
 
     /* Loop values */
@@ -122,7 +122,8 @@ extern int init_raw(raw_t *raw)
     raw->gsof.pos = pos0;
     raw->gsof.vel = vel0;
     raw->gsof.att = att0;
-    raw->gsof.sat = sat0;
+    raw->gsof.sat.num = 0;
+    for (i=0; i<MAXOBS; i++) raw->gsof.sat.data[i] = satd0;
 
     return 1;
 }
