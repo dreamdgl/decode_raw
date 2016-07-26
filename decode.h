@@ -39,9 +39,6 @@ extern "C" {
 #else
 #include <pthread.h>
 #endif
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* constants -----------------------------------------------------------------*/
 
