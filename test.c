@@ -66,7 +66,7 @@ static void decode_stream(raw_t *raw, unsigned char buff[], int len)
     for (i=0; i<len; i++) {
         status = decode_unicore(raw, buff[i]);
         /* get gsof_sat data */
-        if (status == 48 ) {
+        if (status == 24 ) {
             printf("%20s ==== azi & ele ====> %02d\n", time_str(raw->time, 3),
                 raw->gsof.sat.num);
             for(j=0; j<raw->gsof.sat.num; j++) {

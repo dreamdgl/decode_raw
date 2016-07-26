@@ -110,7 +110,7 @@ static int uraindex(double value);
 |   21: input gsof position data
 |   22: input gsof velocity data
 |   23: input gsof attitude data
-|   48: input gsof satellite data
+|   24: input gsof satellite data
 |
 | Design Issues:
 |
@@ -299,16 +299,8 @@ extern int decode_unicore(raw_t *raw, unsigned char data)
 |
 | Return Value:
 |
-|   -1: error message
-|    0: no message (tells caller to please read more data from the stream)
-|    1: input observation data
-|    2: input ephemeris
-|    3: input sbas message
-|    9: input ion/utc parameter
-|   11: input observation data (heading antenna)
-|   21: input gsof position data
-|   22: input gsof velocity data
-|   23: input gsof attitude data
+| -2: end of file/format error
+| -1...31: same as above
 |
 | Design Issues:
 |
@@ -769,11 +761,12 @@ static int decode_bd2ephem(raw_t *raw, int e)
     eph.f1  = R8(p+196, e);             /* 196-203: Satellite clock rate (s/s) */
     eph.f2  = R8(p+204, e);             /* 204-211: Satellite clock acceleration (s/s^2) */
                                         /* 212-215: Anti-sproof, ignored */
-    eph.n   = R8(p+216, e);             /* 216-223: Corrected mean angle rate (rad/s) */
+//    eph.n   = R8(p+216, e);             /* 216-223: Corrected mean angle rate (rad/s) */
     ura     = R8(p+224, e);             /* 224-231: SV accuracy (m^2) */
     eph.sva = uraindex(SQRT(ura));
 
     /* Convert  week and tow in gps time to gtime_t struct */
+    eph.toes  = toe;
     eph.toc   = gpst2time(eph.week, toc);
     eph.toe   = gpst2time(eph.week, toe);
     eph.ttr   = gpst2time(eph.week, tow);
@@ -870,11 +863,12 @@ static int decode_gpsephem(raw_t *raw, int e)
     eph.f1  = R8(p+188, e);             /* 188-195: Satellite clock rate (s/s) */
     eph.f2  = R8(p+196, e);             /* 196-203: Satellite clock acceleration (s/s^2) */
                                         /* 204-207: Anti-sproof, ignored */
-    eph.n   = R8(p+208, e);             /* 208-215: Corrected mean angle rate (rad/s) */
+//    eph.n   = R8(p+208, e);             /* 208-215: Corrected mean angle rate (rad/s) */
     ura     = R8(p+216, e);                 /* 216-223: SV accuracy (m^2) */
     eph.sva = uraindex(SQRT(ura));
 
     /* Convert  week and tow in gps time to gtime_t struct */
+    eph.toes  = toe;
     eph.toc   = gpst2time(eph.week, toc);
     eph.toe   = gpst2time(eph.week, toe);
     eph.ttr   = gpst2time(eph.week, tow);
@@ -1575,7 +1569,7 @@ static int decode_satvis(raw_t *raw, int e)
     }
 
     /* return SATVIS flag */
-    return (48);
+    return (24);
 }
 
 /* ura value (m) to ura index ------------------------------------------------*/

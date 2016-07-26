@@ -94,8 +94,8 @@ extern int init_raw(raw_t *raw)
     if (!(raw->obs.data = (obsd_t   *)malloc(sizeof(obsd_t)*MAXOBS))||
         !(raw->obuf.data= (obsd_t   *)malloc(sizeof(obsd_t)*MAXOBS))||
         !(raw->nav.eph  = (eph_t    *)malloc(sizeof(eph_t )*MAXSAT))||
-        !(raw->nav.geph = (geph_t   *)malloc(sizeof(geph_t)*NSATGLO))||
-        !(raw->nav.alm  = (alm_t    *)malloc(sizeof(alm_t )*MAXSAT))) {
+        !(raw->nav.alm  = (alm_t    *)malloc(sizeof(alm_t )*MAXSAT))||
+        !(raw->nav.geph = (geph_t   *)malloc(sizeof(geph_t)*NSATGLO))) {
             free_raw(raw);
             return 0;
     }

@@ -8,6 +8,7 @@
 *           2016/06/13  add sigma values for gsof_att_t data type
 *           2016/07/11  add gsof_sat_t to gsof_t, and related functions
 *           2016/07/20  replace "CMP" with "BDS"
+*                       unify the satno() and satsys() with rtklib 2.4.3
 *
 *-----------------------------------------------------------------------------*/
 
@@ -504,8 +505,21 @@ typedef struct {        /* GPS/QZS/GAL broadcast ephemeris type */
     int flag;           /* GPS/QZS: L2 P data flag, BDS: nav type */
     gtime_t toe,toc,ttr; /* Toe,Toc,T_trans */
                         /* SV orbit parameters */
-    double A,e,i0,OMG0,omg,M0,deln,n,OMGd,idot;
-    double crc,crs,cuc,cus,cic,cis;
+    double A,           /* Semi-major axis (m) */
+           e,           /* Eccentricity */
+           i0,          /* Inclination angle at reference time (rad) */
+           OMG0,        /* Longitude of ascending node (rad) */
+           omg,         /* Argument of perigee (rad) */
+           M0,          /* Mean anomaly at reference time (rad) */
+           deln,        /* Correction of mean angle velocity (rad/s) */
+           OMGd,        /* Rate of Longitude of ascending node (rad/s) */
+           idot;        /* Rate of inclination anlge (rad/s) */
+    double crc, crs,    /* Amplitude of consine/sine harmonic correction term
+                           to orbit radius (m) */
+           cuc, cus,    /* Amplitude of consine/sine harmonic correction term
+                           to argument of latitude (rad) */
+           cic, cis;    /* Amplitude of consine/sine harmonic correction term
+                           to angle of inclination (rad) */
     double toes;        /* Toe (s) in week */
     double fit;         /* fit interval (h) */
     double f0,f1,f2;    /* SV clock parameters (af0,af1,af2) */
