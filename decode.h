@@ -653,6 +653,10 @@ extern gtime_t epoch2time(const double *ep);
 extern void    time2epoch(gtime_t t, double *ep);
 extern char    *time_str(gtime_t t, int n);
 extern void    time2str(gtime_t t, char *str, int n);
+extern gtime_t timeadd  (gtime_t t, double sec);
+extern double  timediff (gtime_t t1, gtime_t t2);
+extern gtime_t gpst2utc (gtime_t t);
+extern gtime_t utc2gpst (gtime_t t);
 
 #ifdef __cplusplus
 }

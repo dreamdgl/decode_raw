@@ -16,6 +16,28 @@ const static double gpst0[]={1980,1, 6,0,0,0}; /* gps time reference */
 const static double gst0 []={1999,8,22,0,0,0}; /* galileo system time reference */
 const static double bdt0 []={2006,1, 1,0,0,0}; /* beidou time reference */
 
+static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
+    {2017,1,1,0,0,0,-18},
+    {2015,7,1,0,0,0,-17},
+    {2012,7,1,0,0,0,-16},
+    {2009,1,1,0,0,0,-15},
+    {2006,1,1,0,0,0,-14},
+    {1999,1,1,0,0,0,-13},
+    {1997,7,1,0,0,0,-12},
+    {1996,1,1,0,0,0,-11},
+    {1994,7,1,0,0,0,-10},
+    {1993,7,1,0,0,0, -9},
+    {1992,7,1,0,0,0, -8},
+    {1991,1,1,0,0,0, -7},
+    {1990,1,1,0,0,0, -6},
+    {1988,1,1,0,0,0, -5},
+    {1985,7,1,0,0,0, -4},
+    {1983,7,1,0,0,0, -3},
+    {1982,7,1,0,0,0, -2},
+    {1981,7,1,0,0,0, -1},
+    {0}
+};
+
 /* debug trace functions -----------------------------------------------------*/
 #ifdef TRACE
 extern void trace(int level, const char *format, ...)
@@ -381,3 +403,65 @@ extern double time2bdt(gtime_t t, int *week)
     if (week) *week=w;
     return (double)(sec-w*86400*7)+t.sec;
 }
+
+/* gpstime to utc --------------------------------------------------------------
+* convert gpstime to utc considering leap seconds
+* args   : gtime_t t        I   time expressed in gpstime
+* return : time expressed in utc
+* notes  : ignore slight time offset under 100 ns
+*          this function cannot run correctly if new leaps occurred ahead of 
+*          leaps[0]
+*-----------------------------------------------------------------------------*/
+extern gtime_t gpst2utc(gtime_t t)
+{
+    gtime_t tu;
+    int i;
+
+    for (i=0;leaps[i][0]>0;i++) {
+        tu=timeadd(t,leaps[i][6]);
+        if (timediff(tu,epoch2time(leaps[i]))>=0.0) return tu;
+    }
+    return t;
+}
+/* utc to gpstime --------------------------------------------------------------
+* convert utc to gpstime considering leap seconds
+* args   : gtime_t t        I   time expressed in utc
+* return : time expressed in gpstime
+* notes  : ignore slight time offset under 100 ns
+*          this function cannot run correctly if new leaps occurred ahead of 
+*          leaps[0]
+*-----------------------------------------------------------------------------*/
+extern gtime_t utc2gpst(gtime_t t)
+{
+    int i;
+
+    for (i=0;leaps[i][0]>0;i++) {
+        if (timediff(t,epoch2time(leaps[i]))>=0.0) return timeadd(t,-leaps[i][6]);
+    }
+    return t;
+}
+
+/* add time --------------------------------------------------------------------
+* add time to gtime_t struct
+* args   : gtime_t t        I   gtime_t struct
+*          double sec       I   time to add (s)
+* return : gtime_t struct (t+sec)
+*-----------------------------------------------------------------------------*/
+extern gtime_t timeadd(gtime_t t, double sec)
+{
+    double tt;
+
+    t.sec+=sec; tt=floor(t.sec); t.time+=(int)tt; t.sec-=tt;
+    return t;
+}
+/* time difference -------------------------------------------------------------
+* difference between gtime_t structs
+* args   : gtime_t t1,t2    I   gtime_t structs
+* return : time difference (t1-t2) (s)
+*-----------------------------------------------------------------------------*/
+extern double timediff(gtime_t t1, gtime_t t2)
+{
+    return difftime(t1.time,t2.time)+t1.sec-t2.sec;
+}
+
+

@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     raw->outtype    = 1;        /* set to output message type id */
 
     /* initialize socket */
-    sock = creat_client_socket("192.168.3.212", 40003);
+    sock = creat_client_socket("192.168.3.108", 50000);
     if(sock < 0) {
         printf("sock error\n");
         exit(0);
@@ -63,11 +63,16 @@ static void decode_stream(raw_t *raw, unsigned char buff[], int len)
     /* local variable */
     int i, j, status;
     int sys, prn;
+    gtime_t utctimebj;
     for (i=0; i<len; i++) {
         status = decode_unicore(raw, buff[i]);
+        if (status <= 0) continue;
+        /* get beijing utc time */
+        utctimebj = gpst2utc(raw->time);
+        utctimebj.time += 8*3600;
         /* get gsof_sat data */
         if (status == 24 ) {
-            printf("%20s ==== azi & ele ====> %02d\n", time_str(raw->time, 3),
+            printf("%20s ==== azi & ele ====> %02d\n", time_str(utctimebj, 3),
                 raw->gsof.sat.num);
             for(j=0; j<raw->gsof.sat.num; j++) {
                 printf("    %c%02d  %8.3f %8.3f\n", 
@@ -80,7 +85,7 @@ static void decode_stream(raw_t *raw, unsigned char buff[], int len)
         }
         /* get raw_sna data */
         if (status == 1 ) {
-            printf("%20s ==== sna ====> %02d\n", time_str(raw->time, 3),
+            printf("%20s ==== sna ====> %02d\n", time_str(utctimebj, 3),
                 raw->obs.n);
             for(j=0; j<raw->obs.n; j++) {
                 sys = satsys(raw->obs.data[j].sat, &prn);
